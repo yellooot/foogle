@@ -1,4 +1,7 @@
-import chardet
+try:
+    import chardet
+except ImportError:
+    exit("Please install chardet module.")
 import math
 import pathlib
 from collections import defaultdict, deque
@@ -50,10 +53,13 @@ class Foogle:
         _stack = deque()
         while _query:
             token = _query.popleft()
+
             if token == "and":
-                _stack.append(_stack.pop().intersection(_stack.pop()))
-            if token == "or":
-                _stack.append(_stack.pop().union(_stack.pop()))
+                first, second = _stack.pop(), _stack.pop()
+                _stack.append(first.intersection(second))
+            elif token == "or":
+                first, second = _stack.pop(), _stack.pop()
+                _stack.append(first.union(second))
             elif token == "not":
                 _stack.append(set(self._path_by_id.keys()) - _stack.pop())
             else:
@@ -61,7 +67,8 @@ class Foogle:
         return _stack[0]
 
     def search(self, postfix_query):
-        return [self._path_by_id[_id] for _id in self._search(postfix_query)]
+        ids = self._search(postfix_query)
+        return [self._path_by_id[_id] for _id in ids]
 
     def _relevant(self, postfix_query, k=3):
         if k > 10:

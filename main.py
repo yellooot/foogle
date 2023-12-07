@@ -1,5 +1,5 @@
 import argparse
-import traceback
+import os.path
 
 from exceptions import *
 from foogle import Foogle
@@ -12,6 +12,8 @@ if __name__ == "__main__":
                                                    "to work with.")
         args = parser.parse_args()
         try:
+            if not os.path.isdir(args.path) or not os.path.exists(args.path):
+                exit("Invalid folder.")
             print("Indexation has been started. Please wait..")
             foogle = Foogle(directory=args.path)
             foogle.index()
@@ -19,7 +21,6 @@ if __name__ == "__main__":
         except OSError as e:
             print(e)
         except Exception as e:
-            traceback.print_exc()
             print("Something went wrong.")
             exit(1)
 
@@ -49,29 +50,42 @@ if __name__ == "__main__":
                     print("Wrong command. Use --help to find some help.")
                     continue
                 args = command_parser.parse_args([command, query])
-                query = Query(args.query).data
+                query = args.query
+                print("----------")
                 match command:
                     case "indexof":
+                        query = Query(query).data
                         found = (foogle.search(query))
                         if len(found) == 0:
                             print("Nothing has been found.")
                         else:
+                            print(f"{len(found)} document(s) have been found:")
                             for path in found:
                                 print(path)
                     case "relevant":
-                        most_relevant_documents = foogle.relevant(query)
+                        split_query = query.split()
+                        if split_query[0] == "-n":
+                            n = int(split_query[1])
+                            query = "".join(split_query[2:])
+                        else:
+                            n = 3
+                        if n < 1:
+                            n = 1
+                        query = Query(query).data
+                        most_relevant_documents = foogle.relevant(query, n)
                         if len(most_relevant_documents) == 0:
                             print("Nothing has been found.")
                         else:
+                            print(f"Top {n} most relevant documents:")
                             for i, document in enumerate(
                                     most_relevant_documents):
                                 print(f"{i + 1}) {document}")
+                print()
             except OSError as e:
                 print(e)
             except FoogleException as e:
                 print(e)
             except Exception as e:
-                traceback.print_exc()
                 print("Something went wrong. Try again.")
     except KeyboardInterrupt:
         pass
