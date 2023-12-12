@@ -1,9 +1,22 @@
 import argparse
-import os.path
+import os
+import shlex
 
 from exceptions import *
-from foogle import Foogle
+from foogle import Foogle, SUPPORTED_EXTENSIONS
 from query import Query
+
+
+class MyParser(argparse.ArgumentParser):
+    def exit(self, status=0, message=None):
+        pass
+
+    def error(self, message=None):
+        pass
+
+    def print_help(self, file=None):
+        pass
+
 
 if __name__ == "__main__":
     try:
@@ -13,79 +26,77 @@ if __name__ == "__main__":
         args = parser.parse_args()
         try:
             if not os.path.isdir(args.path) or not os.path.exists(args.path):
-                exit("Invalid folder.")
-            print("Indexation has been started. Please wait..")
+                exit(">> Invalid folder.")
+            print(">> Indexation has been started. Please wait..")
             foogle = Foogle(directory=args.path)
-            foogle.index()
-            print("Indexation has been ended. You can use commands now.")
+            print(">> Indexation has been ended.\nYou can use commands now.\n")
         except OSError as e:
             print(e)
+            exit(1)
         except Exception as e:
             print("Something went wrong.")
-            exit(1)
+            print(e)
+            exit(2)
 
-        command_parser = argparse.ArgumentParser(exit_on_error=False,
-                                                 add_help=False)
-        command_parser.add_argument("command", type=str)
-        command_parser.add_argument("query", type=str)
+        command_parser = MyParser(add_help=False)
 
         subparsers = command_parser.add_subparsers(dest="command")
         indexof_parser = subparsers.add_parser("indexof",
-                                               exit_on_error=False)
+                                               add_help=False)
 
         relevant_parser = subparsers.add_parser("relevant",
-                                                exit_on_error=False)
+                                                add_help=False)
 
-        supported_commands = ["indexof", "relevant"]
+        for subparser in [indexof_parser, relevant_parser]:
+            subparser.add_argument("-l", "--logic", action='store_true')
+            subparser.add_argument("query", type=str)
+            # subparser.add_argument("-ext", "--extensions", type=str,
+            #                              default="!")
+
+        relevant_parser.add_argument("-n", "--top-n", type=int, default=3)
+
+
         _help = "No one's around to help."
         while True:
             try:
-                inpstr = input()
-                if inpstr == "--help" or inpstr == "-h":
-                    print(_help)
-                    continue
-                inpsplit = inpstr.split()
-                command, query = inpsplit[0], " ".join(inpsplit[1:])
-                if command not in supported_commands:
-                    print("Wrong command. Use --help to find some help.")
-                    continue
-                args = command_parser.parse_args([command, query])
-                query = args.query
-                print("----------")
-                match command:
+                print(">", end=" ")
+                args = command_parser.parse_args(shlex.split(input()))
+                query = Query(args.query, args.logic).data
+                # extensions = args.extensions.split()\
+                #     .intersection(SUPPORTED_EXTENSIONS)
+                # if len(extensions) == 0:
+                #     extensions = SUPPORTED_EXTENSIONS
+                match args.command:
                     case "indexof":
-                        query = Query(query).data
                         found = (foogle.search(query))
                         if len(found) == 0:
                             print("Nothing has been found.")
                         else:
-                            print(f"{len(found)} document(s) have been found:")
-                            for path in found:
-                                print(path)
+                            print(f"--- {len(found)} document(s) "
+                                  f"have been found:")
+                            for i, path in enumerate(found):
+                                print(f"{i + 1}. {path}")
                     case "relevant":
-                        split_query = query.split()
-                        if split_query[0] == "-n":
-                            n = int(split_query[1])
-                            query = "".join(split_query[2:])
-                        else:
-                            n = 3
+                        n = args.top_n
                         if n < 1:
-                            n = 1
+                            n = 3
                         query = Query(query).data
-                        most_relevant_documents = foogle.relevant(query, n)
+                        most_relevant_documents = foogle.relevant(query, n,
+                                                                  extensions)
                         if len(most_relevant_documents) == 0:
                             print("Nothing has been found.")
                         else:
-                            print(f"Top {n} most relevant documents:")
+                            count = min(n, len(most_relevant_documents))
+                            print(f"--- Top {count} most relevant documents:")
                             for i, document in enumerate(
                                     most_relevant_documents):
-                                print(f"{i + 1}) {document}")
-                print()
+                                print(f"{i + 1}. {document}")
             except OSError as e:
                 print(e)
             except FoogleException as e:
                 print(e)
             except Exception as e:
                 print("Something went wrong. Try again.")
+            print()
     except KeyboardInterrupt:
         pass

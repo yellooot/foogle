@@ -1,17 +1,25 @@
+import os.path
+
 try:
     import chardet
+    import docx2txt
+    import PyPDF2
 except ImportError:
-    exit("Please install chardet module.")
+    exit("Please make sure that all required modules are installed.")
 import math
 import pathlib
 from collections import defaultdict, deque
 from copy import copy
 
+SUPPORTED_EXTENSIONS = {".docx", ".pdf", ".rtf", ".txt"}
+
 
 class Foogle:
     def __init__(self, directory):
         directory = pathlib.Path(directory)
-        self._files = list(directory.rglob("*.txt"))
+        self._files = list()
+        for extension in SUPPORTED_EXTENSIONS:
+            self._files.extend(list(directory.rglob(f"*{extension}")))
         self._id_by_path = dict()
         self._path_by_id = dict()
         self._postings = defaultdict(list)
@@ -20,7 +28,7 @@ class Foogle:
             self._id_by_path[file] = i
             self._path_by_id[i] = file
         self._directory = directory
-        self.index()
+        self._index()
 
     @staticmethod
     def _get_encoding(file_path):
@@ -33,34 +41,49 @@ class Foogle:
             detector.close()
             return detector.result["encoding"]
 
-    def index(self):
+    def _read_file(self, path):
+        _, extension = os.path.splitext(path)
+        match extension:
+            case ".txt":
+                with open(path, "r", encoding=self._get_encoding(path)) as f:
+                    return f.read()
+            case ".docx":
+                return docx2txt.process(path)
+            case ".pdf":
+                with open(path, "rb") as f:
+                    pdfdoc = PyPDF2.PdfReader(f)
+                    return "\n".join([page.extract_text()
+                                      for page in pdfdoc.pages])
+            case ".rtf":
+                with open(path, "r", encoding=self._get_encoding(path)) as f:
+                    return f.read()
+
+    def _index(self):
         for file in self._files:
+            data = self._read_file(file)
             document_id = self._id_by_path[file]
-            encoding = self._get_encoding(file)
-            with open(file, "r", encoding=encoding) as f:
-                terms = "".join([s.lower() for s in
-                                 filter(lambda x: x.isalnum() or x.isspace(),
-                                        f.read())]).split()
-                for term in terms:
-                    self._tf[(term, document_id)] += 1
-                    self._postings[term].append(document_id)
-                terms_set = set(terms)
-                for term in terms_set:
-                    self._tf[(term, document_id)] /= len(terms)
+            terms = "".join([s.lower() for s in
+                             filter(lambda x: x.isalnum() or x.isspace(),
+                                    data)]).split()
+            for term in terms:
+                self._tf[(term, document_id)] += 1
+                self._postings[term].append(document_id)
+            terms_set = set(terms)
+            for term in terms_set:
+                self._tf[(term, document_id)] /= len(terms)
 
     def _search(self, postfix_query):
         _query = copy(postfix_query)
         _stack = deque()
         while _query:
             token = _query.popleft()
-
-            if token == "and":
+            if token == "&":
                 first, second = _stack.pop(), _stack.pop()
                 _stack.append(first.intersection(second))
-            elif token == "or":
+            elif token == "|":
                 first, second = _stack.pop(), _stack.pop()
                 _stack.append(first.union(second))
-            elif token == "not":
+            elif token == "!":
                 _stack.append(set(self._path_by_id.keys()) - _stack.pop())
             else:
                 _stack.append(set(self._postings[token]))
@@ -74,7 +97,7 @@ class Foogle:
         if k > 10:
             k = 10
         terms = set(term for term in list(postfix_query)
-                    if term not in ["not", "and", "or"])
+                    if term not in ["&", "|", "!"])
         documents = self._search(postfix_query)
         score = defaultdict(int)
         for document in documents:
