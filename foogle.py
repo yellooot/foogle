@@ -1,14 +1,15 @@
+import math
+import os.path
+
 try:
     import chardet
     import docx2txt
     import PyPDF2
 except ImportError:
     exit("Please make sure that all required modules are installed.")
-import math
 import pathlib
 from collections import defaultdict, deque
 from copy import copy
-import os.path
 
 SUPPORTED_EXTENSIONS = {".docx", ".pdf", ".rtf", ".txt"}
 
@@ -17,11 +18,14 @@ class Foogle:
     def __init__(self, directory):
         directory = pathlib.Path(directory)
         self._files = list()
+        self._files_count_by_extension = defaultdict(int)
+        for file in self._files:
+            self._files_count_by_extension[os.path.splitext(file)[1]] += 1
         for extension in SUPPORTED_EXTENSIONS:
             self._files.extend(list(directory.rglob(f"*{extension}")))
         self._id_by_path = dict()
         self._path_by_id = dict()
-        self._postings = defaultdict(list)
+        self._postings = defaultdict(lambda: defaultdict(list))
         self._tf = defaultdict(float)
         for i, file in enumerate(self._files):
             self._id_by_path[file] = i
@@ -59,6 +63,7 @@ class Foogle:
 
     def _index(self):
         for file in self._files:
+            extension = os.path.splitext(file)[1]
             data = self._read_file(file)
             document_id = self._id_by_path[file]
             terms = "".join([s.lower() for s in
@@ -66,12 +71,12 @@ class Foogle:
                                     data)]).split()
             for term in terms:
                 self._tf[(term, document_id)] += 1
-                self._postings[term].append(document_id)
+                self._postings[term][extension].append(document_id)
             terms_set = set(terms)
             for term in terms_set:
                 self._tf[(term, document_id)] /= len(terms)
 
-    def _search(self, postfix_query):
+    def _search(self, postfix_query, extension):
         _query = copy(postfix_query)
         _stack = deque()
         while _query:
@@ -85,31 +90,42 @@ class Foogle:
             elif token == "!":
                 _stack.append(set(self._path_by_id.keys()) - _stack.pop())
             else:
-                _stack.append(set(self._postings[token]))
+                _stack.append(set(self._postings[token][extension]))
         return _stack[0]
 
-    def search(self, postfix_query):
-        ids = self._search(postfix_query)
-        return [self._path_by_id[_id] for _id in ids]
+    def search(self, postfix_query, extensions):
+        result = []
+        for extension in extensions:
+            result += [self._path_by_id[_id]
+                       for _id in self._search(postfix_query, extension)]
+        return result
 
-    def _relevant(self, postfix_query, k=3):
-        if k > 10:
-            k = 10
+    def _relevant(self, postfix_query, extensions, k=3):
+        if k > 50:
+            k = 50
         terms = set(term for term in list(postfix_query)
                     if term not in ["&", "|", "!"])
-        documents = self._search(postfix_query)
+        documents = set()
+        for ext in extensions:
+            documents = documents.union(self._search(postfix_query, ext))
+
         score = defaultdict(int)
         for document in documents:
             for term in terms:
-                score[document] += self.get_tf_idf(document, term)
+                score[document] += self.get_tf_idf(document, term, extensions)
         return sorted(documents, key=lambda d: -score[d])[:k]
 
-    def relevant(self, postfix_query, k=3):
+    def relevant(self, postfix_query, extensions, k=3):
         return [self._path_by_id[_id] for _id
-                in self._relevant(postfix_query, k)]
+                in self._relevant(postfix_query, extensions, k)]
 
-    def get_tf_idf(self, document_id, term):
+    def get_tf_idf(self, document_id, term, extensions):
+        all_files_count = sum([self._files_count_by_extension[ext]
+                               for ext in extensions])
+        good_files_count = sum([len(set(self._postings[term][ext]))
+                                for ext in extensions])
         if document_id not in self._postings[term]:
             return 0
-        return self._tf[(term, document_id)] \
-            * math.log(len(self._files) / len(set(self._postings[term])), 10)
+        tf = self._tf[(term, document_id)]
+        idf = math.log(all_files_count / good_files_count, 10)
+        return tf * idf

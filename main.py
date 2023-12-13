@@ -1,7 +1,8 @@
 import argparse
 import os
 import shlex
-from exceptions import *
+
+from exceptions import FoogleException
 from foogle import Foogle, SUPPORTED_EXTENSIONS
 from query import Query
 
@@ -34,7 +35,6 @@ if __name__ == "__main__":
             exit(1)
         except Exception as e:
             print("Something went wrong.")
-            print(e)
             exit(2)
 
         command_parser = MyParser(add_help=False)
@@ -49,24 +49,23 @@ if __name__ == "__main__":
         for subparser in [indexof_parser, relevant_parser]:
             subparser.add_argument("-l", "--logic", action='store_true')
             subparser.add_argument("query", type=str)
-            # subparser.add_argument("-ext", "--extensions", type=str,
-            #                              default="!")
+            subparser.add_argument("-ext", "--extensions", type=str,
+                                   default="!")
 
         relevant_parser.add_argument("-n", "--top-n", type=int, default=3)
 
-        _help = "No one's around to help."
         while True:
             try:
                 print(">", end=" ")
                 args = command_parser.parse_args(shlex.split(input()))
                 query = Query(args.query, args.logic).data
-                # extensions = args.extensions.split()\
-                #     .intersection(SUPPORTED_EXTENSIONS)
-                # if len(extensions) == 0:
-                #     extensions = SUPPORTED_EXTENSIONS
+                extensions = {f".{ext}" for ext in args.extensions.split()} \
+                    .intersection(SUPPORTED_EXTENSIONS)
+                if len(extensions) == 0:
+                    extensions = SUPPORTED_EXTENSIONS
                 match args.command:
                     case "indexof":
-                        found = (foogle.search(query))
+                        found = (foogle.search(query, extensions))
                         if len(found) == 0:
                             print("Nothing has been found.")
                         else:
@@ -78,8 +77,9 @@ if __name__ == "__main__":
                         n = args.top_n
                         if n < 1:
                             n = 3
-                        query = Query(query).data
-                        most_relevant_documents = foogle.relevant(query, n)
+                        most_relevant_documents = foogle.relevant(
+                            query, extensions, n
+                        )
                         if len(most_relevant_documents) == 0:
                             print("Nothing has been found.")
                         else:

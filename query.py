@@ -1,8 +1,9 @@
 import enum
 from collections import deque
 from copy import copy
+
 from get_word_forms import get_word_forms
-from exceptions import *
+from exceptions import FoogleBadQueryError, FoogleSyntaxError
 
 
 class Operator(enum.Enum):
@@ -120,10 +121,11 @@ class Query:
                 _word = token[1:]
                 if len(_word) == 0:
                     continue
-                forms = get_word_forms(_word)
+                forms = list(get_word_forms(_word))
                 new_tokens.append("(")
-                new_tokens.extend(forms)
                 for i in range(len(forms) - 1):
+                    new_tokens.append(forms[i])
                     new_tokens.append("|")
+                new_tokens.append(forms[-1])
                 new_tokens.append(")")
         self._tokens = new_tokens
