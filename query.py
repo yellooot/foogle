@@ -1,7 +1,6 @@
 import enum
 from collections import deque
 from copy import copy
-
 from get_word_forms import get_word_forms
 from exceptions import *
 

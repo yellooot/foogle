@@ -1,7 +1,6 @@
 import argparse
 import os
 import shlex
-
 from exceptions import *
 from foogle import Foogle, SUPPORTED_EXTENSIONS
 from query import Query
@@ -55,7 +54,6 @@ if __name__ == "__main__":
 
         relevant_parser.add_argument("-n", "--top-n", type=int, default=3)
 
-
         _help = "No one's around to help."
         while True:
             try:
@@ -81,8 +79,7 @@ if __name__ == "__main__":
                         if n < 1:
                             n = 3
                         query = Query(query).data
-                        most_relevant_documents = foogle.relevant(query, n,
-                                                                  extensions)
+                        most_relevant_documents = foogle.relevant(query, n)
                         if len(most_relevant_documents) == 0:
                             print("Nothing has been found.")
                         else:

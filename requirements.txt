@@ -1,1 +1,5 @@
 chardet
+PyPDF2
+docx2txt
+pymorphy3
+word_forms

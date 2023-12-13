@@ -1,5 +1,3 @@
-import os.path
-
 try:
     import chardet
     import docx2txt
@@ -10,6 +8,7 @@ import math
 import pathlib
 from collections import defaultdict, deque
 from copy import copy
+import os.path
 
 SUPPORTED_EXTENSIONS = {".docx", ".pdf", ".rtf", ".txt"}
 
