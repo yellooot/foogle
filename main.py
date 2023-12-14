@@ -1,9 +1,8 @@
 import argparse
 import os
 import shlex
-
 from exceptions import FoogleException
-from foogle import Foogle, SUPPORTED_EXTENSIONS
+from foogle import Foogle
 from query import Query
 
 
@@ -38,7 +37,6 @@ if __name__ == "__main__":
             exit(2)
 
         command_parser = MyParser(add_help=False)
-
         subparsers = command_parser.add_subparsers(dest="command")
         indexof_parser = subparsers.add_parser("indexof",
                                                add_help=False)
@@ -60,9 +58,9 @@ if __name__ == "__main__":
                 args = command_parser.parse_args(shlex.split(input()))
                 query = Query(args.query, args.logic).data
                 extensions = {f".{ext}" for ext in args.extensions.split()} \
-                    .intersection(SUPPORTED_EXTENSIONS)
+                    .intersection(Foogle.SUPPORTED_EXTENSIONS)
                 if len(extensions) == 0:
-                    extensions = SUPPORTED_EXTENSIONS
+                    extensions = Foogle.SUPPORTED_EXTENSIONS
                 match args.command:
                     case "indexof":
                         found = (foogle.search(query, extensions))

@@ -1,6 +1,5 @@
 import math
 import os.path
-
 try:
     import chardet
     import docx2txt
@@ -11,18 +10,18 @@ import pathlib
 from collections import defaultdict, deque
 from copy import copy
 
-SUPPORTED_EXTENSIONS = {".docx", ".pdf", ".rtf", ".txt"}
-
 
 class Foogle:
+    SUPPORTED_EXTENSIONS = {".docx", ".pdf", ".rtf", ".txt"}
+
     def __init__(self, directory):
         directory = pathlib.Path(directory)
         self._files = list()
         self._files_count_by_extension = defaultdict(int)
+        for extension in Foogle.SUPPORTED_EXTENSIONS:
+            self._files.extend(list(directory.rglob(f"*{extension}")))
         for file in self._files:
             self._files_count_by_extension[os.path.splitext(file)[1]] += 1
-        for extension in SUPPORTED_EXTENSIONS:
-            self._files.extend(list(directory.rglob(f"*{extension}")))
         self._id_by_path = dict()
         self._path_by_id = dict()
         self._postings = defaultdict(lambda: defaultdict(list))
@@ -47,19 +46,15 @@ class Foogle:
     def _read_file(self, path):
         _, extension = os.path.splitext(path)
         match extension:
-            case ".txt":
+            case ".txt" | ".rtf":
                 with open(path, "r", encoding=self._get_encoding(path)) as f:
                     return f.read()
             case ".docx":
                 return docx2txt.process(path)
             case ".pdf":
                 with open(path, "rb") as f:
-                    pdfdoc = PyPDF2.PdfReader(f)
                     return "\n".join([page.extract_text()
-                                      for page in pdfdoc.pages])
-            case ".rtf":
-                with open(path, "r", encoding=self._get_encoding(path)) as f:
-                    return f.read()
+                                      for page in PyPDF2.PdfReader(f).pages])
 
     def _index(self):
         for file in self._files:

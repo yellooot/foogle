@@ -1,15 +1,7 @@
-import enum
 from collections import deque
 from copy import copy
-
 from get_word_forms import get_word_forms
 from exceptions import FoogleBadQueryError, FoogleSyntaxError
-
-
-class Operator(enum.Enum):
-    NOT = 0
-    AND = 1
-    OR = 2
 
 
 class Query:
@@ -20,6 +12,7 @@ class Query:
             self._get_tokens(query)
             self._add_inexact_forms()
             self._parse()
+            self._validate_parsed_query(self._query)
         except Exception:
             raise FoogleBadQueryError()
 
@@ -83,7 +76,6 @@ class Query:
                 raise FoogleSyntaxError("Mismatched parentheses.")
             _queue.append(element)
         self._query = _queue
-        self._validate_parsed_query(copy(_queue))
 
     @property
     def data(self):
@@ -91,6 +83,7 @@ class Query:
 
     @staticmethod
     def _validate_parsed_query(_queue):
+        _queue = copy(_queue)
         _stack = deque()
         while _queue:
             element = _queue[0]
