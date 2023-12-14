@@ -5,7 +5,7 @@ import os.path
 try:
     import chardet
     import docx2txt
-    import PyPDF2
+    import pypdf
 except ImportError:
     exit("Please make sure that all required modules are installed.")
 import pathlib
@@ -59,7 +59,7 @@ class Foogle:
             case ".pdf":
                 with open(path, "rb") as f:
                     return "\n".join([page.extract_text()
-                                      for page in PyPDF2.PdfReader(f).pages])
+                                      for page in pypdf.PdfReader(f).pages])
 
     def _index(self):
         for file in self._files:
