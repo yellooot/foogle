@@ -1,5 +1,7 @@
+import logging
 import math
 import os.path
+
 try:
     import chardet
     import docx2txt
@@ -9,6 +11,9 @@ except ImportError:
 import pathlib
 from collections import defaultdict, deque
 from copy import copy
+
+logger = logging.getLogger("PyPDF2")
+logger.setLevel(logging.ERROR)
 
 
 class Foogle:
