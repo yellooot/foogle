@@ -1,6 +1,5 @@
 import math
 import os.path
-
 try:
     import chardet
     import docx2txt
