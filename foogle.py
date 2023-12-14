@@ -1,5 +1,6 @@
 import math
 import os.path
+
 try:
     import chardet
     import docx2txt
@@ -95,14 +96,20 @@ class Foogle:
                        for _id in self._search(postfix_query, extension)]
         return result
 
+    def _search_with_extensions(self, postfix_query, extensions):
+        documents = set()
+        for ext in extensions:
+            documents = documents.union(self._search(postfix_query, ext))
+
+        return documents
+
     def _relevant(self, postfix_query, extensions, k=3):
         if k > 50:
             k = 50
         terms = set(term for term in list(postfix_query)
                     if term not in ["&", "|", "!"])
-        documents = set()
-        for ext in extensions:
-            documents = documents.union(self._search(postfix_query, ext))
+
+        documents = self._search_with_extensions(postfix_query, extensions)
 
         score = defaultdict(int)
         for document in documents:
@@ -119,8 +126,14 @@ class Foogle:
                                for ext in extensions])
         good_files_count = sum([len(set(self._postings[term][ext]))
                                 for ext in extensions])
-        if document_id not in self._postings[term]:
+        if not self._is_term_in_document(document_id, term, extensions):
             return 0
         tf = self._tf[(term, document_id)]
         idf = math.log(all_files_count / good_files_count, 10)
         return tf * idf
+
+    def _is_term_in_document(self, document_id, term, extensions):
+        for ext in extensions:
+            if document_id in self._postings[term][ext]:
+                return True
+        return False
