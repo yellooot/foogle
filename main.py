@@ -26,9 +26,11 @@ if __name__ == "__main__":
         try:
             if not os.path.isdir(args.path) or not os.path.exists(args.path):
                 exit(">> Invalid folder.")
-            print(">> Indexation has been started. Please wait..")
+            print("\n>> Indexation has been started. Please wait..")
             foogle = Foogle(directory=args.path)
-            print(">> Indexation has been ended.\nYou can use commands now.\n")
+            print(">> Indexation has been ended.\n\nYou can use commands now.\n"
+                  "Supported commands: indexof, relevant, help. "
+                  "More info in README.md.\n")
         except OSError as e:
             print(e)
             exit(1)
@@ -38,11 +40,12 @@ if __name__ == "__main__":
 
         command_parser = MyParser(add_help=False)
         subparsers = command_parser.add_subparsers(dest="command")
-        indexof_parser = subparsers.add_parser("indexof",
-                                               add_help=False)
 
-        relevant_parser = subparsers.add_parser("relevant",
-                                                add_help=False)
+        indexof_parser = subparsers.add_parser("indexof")
+
+        relevant_parser = subparsers.add_parser("relevant")
+
+        help_parser = subparsers.add_parser("help")
 
         for subparser in [indexof_parser, relevant_parser]:
             subparser.add_argument("-l", "--logic", action='store_true')
@@ -56,6 +59,9 @@ if __name__ == "__main__":
             try:
                 print(">", end=" ")
                 args = command_parser.parse_args(shlex.split(input()))
+                if args.command == "help":
+                    print("https://www.youtube.com/watch?v=yD2FSwTy2lw")
+                    continue
                 query = Query(args.query, args.logic).data
                 extensions = {f".{ext}" for ext in args.extensions.split()} \
                     .intersection(Foogle.SUPPORTED_EXTENSIONS)
@@ -92,6 +98,7 @@ if __name__ == "__main__":
                 print(e)
             except Exception as e:
                 print("Something went wrong. Try again.")
-            print()
+            finally:
+                print()
     except KeyboardInterrupt:
         pass
